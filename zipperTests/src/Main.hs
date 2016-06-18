@@ -1,7 +1,7 @@
-{-# LANGUAGE DeriveFoldable    #-}
+--{-# LANGUAGE DeriveFoldable    #-}
 {-# LANGUAGE RankNTypes    #-}
-{-# LANGUAGE DeriveFunctor     #-}
-{-# LANGUAGE DeriveTraversable #-}
+--{-# LANGUAGE DeriveFunctor     #-}
+--{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE FlexibleContexts  #-}
 --{-# LANGUAGE DuplicateRecordFields #-}
@@ -46,18 +46,16 @@ makeLenses ''ILayout
 -- makePrisms ''ILayout       
 
 
-data Focus f a = Focus {_cursor:: LensType f a , parent:: Maybe (Focus f a)}  
-instance Show (Focus f a) where
+data Focus a = Focus {_cursor:: LensType a , parent:: Maybe (Focus a)}  
+instance Show (Focus a) where
   show _ = "Focus "
 -- cursor :: Simple Lens (Focus f a) (LensType f a)
 -- cursor = lens (_cursor) (\f a -> f{_cursor = a})
 
-data Layout f a = Layout {_poo:: Int, _layout:: ILayout a, _focus:: Focus f a} deriving (Show)
+data Layout a = Layout {_poo:: Int, _layout:: ILayout a, _focus:: Focus a} deriving (Show)
 
-
-type LensType f a = (Applicative f) =>
-                 (ILayout a -> f (ILayout a))
-                 -> Layout f a -> f (Layout f a)
+type AppLens s t a b = forall f. Functor f => (a -> f b) -> s -> f t
+type LensType a = forall f. Applicative f => (ILayout a -> f (ILayout a)) -> Layout a -> f (Layout a)
 -- Simple Lens (Layout a) (ILayout a)
 makeLenses ''Layout            
 
@@ -68,10 +66,10 @@ makeLenses ''Layout
 testLayout :: ILayout String
 testLayout = HSplit 10 (VSplit 10 (Leaf "1") (Leaf "2")) (Leaf "3")
 
-testf :: Focus f String
+testf :: Focus String
 testf = Focus (layout . top) (Just (Focus layout Nothing)) 
 
-test :: Layout f String
+test :: Layout String
 test = Layout 14 testLayout (Focus (layout.top.left) (Just testf)) 
 
 -- testApProg :: DslApp ()
@@ -101,7 +99,7 @@ printDsl (Ap (SplitHoriz a) c) = do
   putStrLn "SplitHoriz"
   printDsl (c <*> pure a)
 
-type LayoutState a = State (Layout Identity String) a
+type LayoutState a = State (Layout String) a
 
 
 evalDsl :: DslApp a -> LayoutState a
@@ -122,7 +120,8 @@ evalDsl (Ap (SplitHoriz a) c) = do
   poo += 2
   aa <- get
   -- let poo = aa & _cursor (aa ^. focus) .~ Leaf "Poo"
-  put $ aa & _cursor (aa ^. focus) .~ Leaf "More Poo"
+  -- put $ aa & _cursor (aa ^. focus) .~ Leaf "More Poo"
+  _cursor (aa ^. focus) .= Leaf "Do Something"
 
   -- layout .= Leaf "HH"
   -- (_cursor aa) .= Leaf "jjjjj"
