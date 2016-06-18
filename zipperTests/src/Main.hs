@@ -1,10 +1,6 @@
---{-# LANGUAGE DeriveFoldable    #-}
 {-# LANGUAGE RankNTypes    #-}
---{-# LANGUAGE DeriveFunctor     #-}
---{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE FlexibleContexts  #-}
---{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE  ImpredicativeTypes #-}
 {-# LANGUAGE ApplicativeDo #-}
 
@@ -15,10 +11,8 @@ import Control.Applicative.Free
 import Control.Monad.State
 import Prelude
 
--- Lens with an applicative constraint
+-- Lens with an applicative constraint - Required for the tree
 type AppLens s t a b = forall f. (Applicative f) => (a -> f b) -> s -> f t
-type ContLens s t a b = forall f. (Contravariant f) => (a -> f b) -> s -> f t
-
 
 data Algebra a
   = CursorLeft a
@@ -47,15 +41,13 @@ data ILayout a = Leaf {_v :: a}
             | VSplit {_col:: Int, _left, _right :: ILayout a }
             deriving (Show)
 makeLenses ''ILayout     
--- makePrisms ''ILayout       
 
 type LensType a = Simple AppLens (Layout a) (ILayout a)
 
 data Focus a = Focus {_cursor:: LensType a , parent:: Maybe (Focus a)}  
 instance Show (Focus a) where
   show _ = "Focus "
--- cursor :: Simple ContLens (Focus a) (LensType a)
--- cursor = to _cursor
+-- I cannot makeLens on Focus
 cursor :: Simple Lens (Focus a) (LensType a)
 cursor = lens _cursor setter where 
   setter :: Focus a -> LensType a -> Focus a
@@ -86,8 +78,8 @@ test = Layout 14 testLayout (Focus (layout.top.left) (Just testf))
 --   a <- cursorDown
 --   return a
 
-testApProg2 :: DslApp ()
-testApProg2 = cursorRight *> cursorDown *> splitHoriz
+testApProg :: DslApp ()
+testApProg = cursorRight *> cursorDown *> splitHoriz
 
 printDsl :: DslApp a -> IO a
 printDsl (Pure a) = return a
