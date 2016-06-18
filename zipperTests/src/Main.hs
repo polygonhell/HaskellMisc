@@ -5,7 +5,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE FlexibleContexts  #-}
 --{-# LANGUAGE DuplicateRecordFields #-}
---{-# LANGUAGE OverloadedLabels #-}
+{-# LANGUAGE  ImpredicativeTypes #-}
 {-# LANGUAGE ApplicativeDo #-}
 
 module Main where
@@ -14,6 +14,10 @@ import Control.Lens
 import Control.Applicative.Free
 import Control.Monad.State
 import Prelude
+
+-- Lens with an applicative constraint
+type AppLens s t a b = forall f. (Applicative f) => (a -> f b) -> s -> f t
+type ContLens s t a b = forall f. (Contravariant f) => (a -> f b) -> s -> f t
 
 
 data Algebra a
@@ -45,19 +49,23 @@ data ILayout a = Leaf {_v :: a}
 makeLenses ''ILayout     
 -- makePrisms ''ILayout       
 
+type LensType a = Simple AppLens (Layout a) (ILayout a)
 
 data Focus a = Focus {_cursor:: LensType a , parent:: Maybe (Focus a)}  
 instance Show (Focus a) where
   show _ = "Focus "
--- cursor :: Simple Lens (Focus f a) (LensType f a)
--- cursor = lens (_cursor) (\f a -> f{_cursor = a})
+-- cursor :: Simple ContLens (Focus a) (LensType a)
+-- cursor = to _cursor
+cursor :: Simple Lens (Focus a) (LensType a)
+cursor = lens _cursor setter where 
+  setter :: Focus a -> LensType a -> Focus a
+  setter f a = f{_cursor = a}
 
 data Layout a = Layout {_poo:: Int, _layout:: ILayout a, _focus:: Focus a} deriving (Show)
 
-type AppLens s t a b = forall f. Functor f => (a -> f b) -> s -> f t
-type LensType a = forall f. Applicative f => (ILayout a -> f (ILayout a)) -> Layout a -> f (Layout a)
 -- Simple Lens (Layout a) (ILayout a)
-makeLenses ''Layout            
+makeLenses ''Layout           
+-- makeLenses ''Focus 
 
 
 
@@ -118,18 +126,9 @@ evalDsl (Ap (CursorDown a) c) = do
   evalDsl (c <*> pure a)
 evalDsl (Ap (SplitHoriz a) c) = do 
   poo += 2
-  aa <- get
-  -- let poo = aa & _cursor (aa ^. focus) .~ Leaf "Poo"
-  -- put $ aa & _cursor (aa ^. focus) .~ Leaf "More Poo"
-  _cursor (aa ^. focus) .= Leaf "Do Something"
+  l <- use (focus.cursor)
+  l .= Leaf "a Poop"
 
-  -- layout .= Leaf "HH"
-  -- (_cursor aa) .= Leaf "jjjjj"
-  -- poo .= 4
-
-  -- focus.
-  -- let l = view focus :: Focus f String
-  -- focus .= Leaf "Hello Poo"
   evalDsl (c <*> pure a)
 
 
@@ -138,9 +137,10 @@ main :: IO ()
 main = do
   print test
   -- What is the focus' lens is looking at
+  print $ test ^? (test ^. focus.cursor) 
   print $ test ^?  _cursor (test ^. focus) 
   -- let l1 = layout . lens (test ^. focus)
   putStrLn "-----"
   print $ set (_cursor (test ^. focus)) (Leaf "Hello") test  
-  print $ test & _cursor (test ^. focus) .~ Leaf "Poo"
+  print $ test & (test^.focus.cursor) .~ Leaf "Poo"
 
