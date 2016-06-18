@@ -101,10 +101,10 @@ printDsl (Ap (SplitHoriz a) c) = do
   putStrLn "SplitHoriz"
   printDsl (c <*> pure a)
 
-type LayoutState f a = State (Layout f String) a
+type LayoutState a = State (Layout Identity String) a
 
 
-evalDsl :: DslApp a -> LayoutState f a
+evalDsl :: DslApp a -> LayoutState a
 evalDsl (Pure a) = return a
 evalDsl (Ap (CursorLeft a) c) = do 
   poo .= 5
@@ -119,6 +119,13 @@ evalDsl (Ap (CursorDown a) c) = do
   poo += 2
   evalDsl (c <*> pure a)
 evalDsl (Ap (SplitHoriz a) c) = do 
+  poo += 2
+  aa <- get
+  -- let poo = aa & _cursor (aa ^. focus) .~ Leaf "Poo"
+  put $ aa & _cursor (aa ^. focus) .~ Leaf "More Poo"
+
+  -- layout .= Leaf "HH"
+  -- (_cursor aa) .= Leaf "jjjjj"
   -- poo .= 4
 
   -- focus.
