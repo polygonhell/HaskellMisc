@@ -79,7 +79,9 @@ test = Layout 14 testLayout (Focus (layout.top.left) (Just testf))
 --   return a
 
 testApProg :: DslApp ()
-testApProg = cursorRight *> cursorDown *> splitHoriz
+testApProg = cursorRight 
+          *> cursorDown 
+          *> splitHoriz
 
 printDsl :: DslApp a -> IO a
 printDsl (Pure a) = return a
@@ -135,4 +137,5 @@ main = do
   putStrLn "-----"
   print $ set (_cursor (test ^. focus)) (Leaf "Hello") test  
   print $ test & (test^.focus.cursor) .~ Leaf "Poo"
-
+  putStrLn "-----"
+  print $ runState (evalDsl testApProg) test
