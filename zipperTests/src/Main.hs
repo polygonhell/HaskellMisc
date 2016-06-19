@@ -1,18 +1,23 @@
 {-# LANGUAGE RankNTypes    #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE  ImpredicativeTypes #-}
+{-# LANGUAGE ImpredicativeTypes #-}
 {-# LANGUAGE ApplicativeDo #-}
+{-# LANGUAGE RecordWildCards #-}
+
 
 module Main where
 
-import Control.Lens
+import Control.Lens hiding (left')
 import Control.Applicative.Free
 import Control.Monad.State
 import Prelude
+import ILayout
+import qualified SizedLayout as S
 
--- Lens with an applicative constraint - Required for the tree
-type AppLens s t a b = forall f. (Applicative f) => (a -> f b) -> s -> f t
+makeLenses ''ILayout 
+
+
 
 data Algebra a
   = CursorLeft a
@@ -36,13 +41,12 @@ splitHoriz :: DslApp ()
 splitHoriz = liftAp (SplitHoriz ())
 
 
-data ILayout a = Leaf {_v :: a}
-            | HSplit {_row:: Int, _top, _bottom :: ILayout a }
-            | VSplit {_col:: Int, _left, _right :: ILayout a }
-            deriving (Show)
-makeLenses ''ILayout     
 
-type LensType a = Simple AppLens (Layout a) (ILayout a)
+
+
+
+
+type LensType a = Simple Traversal (Layout a) (ILayout a)
 
 data Focus a = Focus {_cursor:: LensType a , parent:: Maybe (Focus a)}  
 instance Show (Focus a) where
@@ -54,17 +58,14 @@ cursor = lens _cursor setter where
   setter f a = f{_cursor = a}
 
 data Layout a = Layout {_poo:: Int, _layout:: ILayout a, _focus:: Focus a} deriving (Show)
-
--- Simple Lens (Layout a) (ILayout a)
 makeLenses ''Layout           
 -- makeLenses ''Focus 
 
 
-
-
-
 testLayout :: ILayout String
 testLayout = HSplit 10 (VSplit 10 (Leaf "1") (Leaf "2")) (Leaf "3")
+
+sizedLayout = S.SizedLayout testLayout 14
 
 testf :: Focus String
 testf = Focus (layout . top) (Just (Focus layout Nothing)) 
